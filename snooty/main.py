@@ -18,6 +18,8 @@ import sys
 import toml
 import watchdog.events
 import watchdog.observers
+import json
+import base64
 from pathlib import Path, PurePath
 from typing import Any, Dict, List, Optional, Union
 from docopt import docopt
@@ -114,6 +116,10 @@ class Backend:
     def on_delete(self, page_id: FileId, build_identifiers: BuildIdentifierSet) -> None:
         pass
 
+    def on_build_complete(self, prefix: List[str],
+                          build_identifiers: BuildIdentifierSet) -> None:
+        pass
+
 
 def construct_build_identifiers_filter(
     build_identifiers: BuildIdentifierSet
@@ -152,7 +158,8 @@ class MongoBackend(Backend):
             asset.get_checksum() for asset in page.static_assets if asset.can_upload()
         )
 
-        fully_qualified_pageid = "/".join(prefix + [page_id.without_known_suffix])
+        fully_qualified_pageid = "/".join(prefix +
+                                          [page_id.without_known_suffix])
 
         # Construct filter for retrieving build documents
         document_filter: Dict[str, Union[str, Dict[str, Any]]] = {
@@ -229,6 +236,84 @@ class MongoBackend(Backend):
         pass
 
 
+class StdOutBackend(Backend):
+    def __init__(self) -> None:
+        super(StdOutBackend, self).__init__()
+        self.documents = []
+        self.assets = set()
+        self.metadata = []
+
+    def on_update(
+        self,
+        prefix: List[str],
+        build_identifiers: BuildIdentifierSet,
+        page_id: FileId,
+        page: Page,
+    ) -> None:
+        super().on_update(prefix, build_identifiers, page_id, page)
+        checksums = list(
+            asset.get_checksum() for asset in page.static_assets if asset.can_upload()
+        )
+
+        fully_qualified_pageid = "/".join(prefix +
+                                          [page_id.without_known_suffix])
+
+        document = {
+            "page_id": fully_qualified_pageid,
+            **{
+                key: value
+                for (key, value) in build_identifiers.items()
+                if value is not None
+            },
+            "prefix": prefix,
+            "filename": page_id.as_posix(),
+            "ast": page.ast.serialize(),
+            "source": page.source,
+            "static_assets": checksums,
+        }
+
+        if page.query_fields:
+            document.update({"query_fields": page.query_fields})
+
+        self.documents.append(document)
+
+        missing_assets = page.static_assets.difference(self.assets)
+
+        for static_asset in missing_assets:
+            if not static_asset.can_upload():
+                continue
+
+            self.assets.add(static_asset)
+
+    def on_update_metadata(
+        self,
+        prefix: List[str],
+        build_identifiers: BuildIdentifierSet,
+        field: Dict[str, SerializableType],
+    ) -> None:
+        property_name = "/".join(prefix)
+
+        if field:
+            field["page_id"] = property_name
+            self.metadata.append(field)
+
+    def on_delete(self, page_id: FileId, build_identifiers: BuildIdentifierSet) -> None:
+        pass
+
+    def on_build_complete(self, prefix: List[str],
+                          build_identifiers: BuildIdentifierSet) -> None:
+        assets = [{
+            "_id": asset.get_checksum(),
+            "filename": str(asset.fileid),
+            "data": str(base64.b64encode(asset.data)),
+        } for asset in self.assets]
+        print(json.dumps({
+            "documents": self.documents,
+            "assets": assets,
+            "metadata": self.metadata
+        }))
+
+
 def _generate_build_identifiers(args: Dict[str, Optional[str]]) -> BuildIdentifierSet:
     identifiers = {}
 
@@ -252,9 +337,10 @@ def main() -> None:
 
     url = args["<mongodb-url>"]
     connection = (
-        None if not url else pymongo.MongoClient(url, password=getpass.getpass())
+        None if not url else pymongo.MongoClient(
+            url, password=getpass.getpass())
     )
-    backend = MongoBackend(connection) if connection else Backend()
+    backend = StdOutBackend()  # MongoBackend(connection) if connection else Backend()
     assert args["<source-path>"] is not None
     root_path = Path(args["<source-path>"])
     project = Project(root_path, backend, _generate_build_identifiers(args))

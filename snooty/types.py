@@ -113,7 +113,8 @@ class StaticAsset:
     def __load(self) -> None:
         if self._data is None:
             self._data = self.path.read_bytes()
-            self._checksum = hashlib.blake2b(self._data, digest_size=32).hexdigest()
+            self._checksum = hashlib.blake2b(
+                self._data, digest_size=32).hexdigest()
 
 
 @dataclass
@@ -170,7 +171,8 @@ class TargetDatabase:
                 url = urllib.parse.urljoin(base_url, entry.uri)
                 title: List[n.InlineNode] = [n.Text((-1,), entry.display_name)]
                 results.append(
-                    TargetDatabase.Result(TargetType.url, url, entry.name, title)
+                    TargetDatabase.Result(
+                        TargetType.url, url, entry.name, title)
                 )
 
         return results
@@ -192,7 +194,8 @@ class TargetDatabase:
         for target in targets:
             target = normalize_target(target)
             key = f"{domain}:{name}:{target}"
-            self.local_definitions[key].append((canonical_target_name, pageid, title))
+            self.local_definitions[key].append(
+                (canonical_target_name, pageid, title))
 
     def reset(self, config: "ProjectConfig") -> None:
         """Reset this database to a "blank" state with intersphinx inventories defined by
@@ -200,9 +203,11 @@ class TargetDatabase:
         self.intersphinx_inventories.clear()
         self.local_definitions.clear()
 
-        logger.debug("Loading %s intersphinx inventories", len(config.intersphinx))
+        logger.debug("Loading %s intersphinx inventories",
+                     len(config.intersphinx))
         for url in config.intersphinx:
-            self.intersphinx_inventories[url] = intersphinx.fetch_inventory(url)
+            self.intersphinx_inventories[url] = intersphinx.fetch_inventory(
+                url)
 
     @classmethod
     def load(cls, config: "ProjectConfig") -> "TargetDatabase":
@@ -343,7 +348,8 @@ class ProjectConfig:
     intersphinx: List[str] = field(default_factory=list)
     substitutions: Dict[str, str] = field(default_factory=dict)
     # substitution_nodes contains a parsed representation of the substitutions member, and is populated on Project initialization.
-    substitution_nodes: Dict[str, List[n.InlineNode]] = field(default_factory=dict)
+    substitution_nodes: Dict[str, List[n.InlineNode]
+                             ] = field(default_factory=dict)
     toc_landing_pages: List[str] = field(default_factory=list)
     page_groups: Dict[str, List[str]] = field(default_factory=dict)
 

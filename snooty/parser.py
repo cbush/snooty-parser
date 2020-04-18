@@ -90,7 +90,8 @@ class PendingLiteralInclude(PendingTask):
             text = self.asset.path.read_text(encoding="utf-8")
         except OSError as err:
             diagnostics.append(
-                CannotOpenFile(self.asset.path, err.strerror, self.node.start[0])
+                CannotOpenFile(self.asset.path, err.strerror,
+                               self.node.start[0])
             )
             return
 
@@ -102,7 +103,8 @@ class PendingLiteralInclude(PendingTask):
             start_after_text = self.options["start-after"]
             assert isinstance(start_after_text, str)
             start_after = next(
-                (idx for idx, line in enumerate(lines) if start_after_text in line), -1
+                (idx for idx, line in enumerate(lines)
+                 if start_after_text in line), -1
             )
             if start_after < 0:
                 diagnostics.append(
@@ -136,7 +138,7 @@ class PendingLiteralInclude(PendingTask):
             end_before -= start_after
 
         # Find the requested lines
-        lines = lines[(start_after + 1) : end_before]
+        lines = lines[(start_after + 1): end_before]
 
         # Deduce a reasonable dedent, if requested.
         if "dedent" in self.options:
@@ -152,7 +154,8 @@ class PendingLiteralInclude(PendingTask):
             lines = [line[dedent:] for line in lines]
 
         if "emphasize_lines" in self.options:
-            self.node.emphasize_lines = self.options["emphasize_lines"]  # type: ignore
+            # type: ignore
+            self.node.emphasize_lines = self.options["emphasize_lines"]
 
         self.node.value = "\n".join(lines)
 
@@ -192,7 +195,8 @@ class PendingFigure(PendingTask):
             cache[(self.asset.fileid, 0)] = checksum
         except OSError as err:
             diagnostics.append(
-                CannotOpenFile(self.asset.path, err.strerror, self.node.start[0])
+                CannotOpenFile(self.asset.path, err.strerror,
+                               self.node.start[0])
             )
 
 
@@ -221,7 +225,8 @@ class JSONVisitor:
             if level >= 2:
                 level = Diagnostic.Level.from_docutils(level)
                 msg = node[0].astext()
-                self.diagnostics.append(DocUtilsParseError(msg, util.get_line(node)))
+                self.diagnostics.append(
+                    DocUtilsParseError(msg, util.get_line(node)))
             raise docutils.nodes.SkipNode()
         elif isinstance(node, (docutils.nodes.definition, docutils.nodes.field_list)):
             return
@@ -237,7 +242,8 @@ class JSONVisitor:
             else:
                 self.diagnostics.append(
                     OptionsNotSupported(
-                        "Options not supported here", util.get_line(node.children[0])
+                        "Options not supported here", util.get_line(
+                            node.children[0])
                     )
                 )
             raise docutils.nodes.SkipNode()
@@ -263,7 +269,8 @@ class JSONVisitor:
             )
             raise docutils.nodes.SkipDeparture()
         elif isinstance(node, rstparser.target_directive):
-            self.state.append(n.Target((line,), [], node["domain"], node["name"], None))
+            self.state.append(
+                n.Target((line,), [], node["domain"], node["name"], None))
         elif isinstance(node, rstparser.directive):
             directive = self.handle_directive(node, line)
             if directive:
@@ -321,7 +328,8 @@ class JSONVisitor:
             children: Any = [n.TargetIdentifier((line,), [], [node_id])]
 
             refuri = node["refuri"] if "refuri" in node else None
-            self.state.append(n.Target((line,), children, "std", "label", refuri))
+            self.state.append(
+                n.Target((line,), children, "std", "label", refuri))
         elif isinstance(node, rstparser.target_identifier):
             self.state.append(n.TargetIdentifier((line,), [], node["ids"]))
         elif isinstance(node, docutils.nodes.definition_list):
@@ -354,7 +362,8 @@ class JSONVisitor:
             except IndexError:
                 pass
         elif isinstance(node, docutils.nodes.substitution_reference):
-            self.state.append(n.SubstitutionReference((line,), [], node["refname"]))
+            self.state.append(n.SubstitutionReference(
+                (line,), [], node["refname"]))
         elif isinstance(node, docutils.nodes.footnote):
             # Autonumbered footnotes do not have a refname
             name = node["names"] if "names" in node else None
@@ -364,7 +373,8 @@ class JSONVisitor:
         elif isinstance(node, docutils.nodes.footnote_reference):
             # Autonumbered footnotes do not have a refname
             refname = node["refname"] if "refname" in node else None
-            self.state.append(n.FootnoteReference((line,), [], node["ids"][0], refname))
+            self.state.append(n.FootnoteReference(
+                (line,), [], node["ids"][0], refname))
         elif isinstance(node, docutils.nodes.section):
             self.state.append(n.Section((line,), []))
         elif isinstance(node, docutils.nodes.paragraph):
@@ -372,7 +382,8 @@ class JSONVisitor:
         elif isinstance(node, rstparser.directive_argument):
             self.state.append(n.DirectiveArgument((line,), []))
         elif isinstance(node, docutils.nodes.term):
-            self.state.append(n.RefRole((line,), [], "std", "term", "", "", None, None))
+            self.state.append(n.RefRole((line,), [], "std",
+                                        "term", "", "", None, None))
         elif isinstance(node, docutils.nodes.line_block):
             self.state.append(n.LineBlock((line,), []))
         elif isinstance(node, docutils.nodes.line):
@@ -387,7 +398,8 @@ class JSONVisitor:
         ):
             raise docutils.nodes.SkipNode()
         else:
-            raise NotImplementedError(f"Unknown node type: {node.__class__.__name__}")
+            raise NotImplementedError(
+                f"Unknown node type: {node.__class__.__name__}")
 
     def dispatch_departure(self, node: docutils.nodes.Node) -> None:
         if len(self.state) == 1 or isinstance(node, docutils.nodes.definition):
@@ -455,15 +467,18 @@ class JSONVisitor:
 
         if name in {"figure", "image", "atf-image"}:
             if argument_text is None:
-                self.diagnostics.append(ExpectedPathArg(name, util.get_line(node)))
+                self.diagnostics.append(
+                    ExpectedPathArg(name, util.get_line(node)))
                 return doc
 
             try:
-                static_asset = self.add_static_asset(Path(argument_text), upload=True)
+                static_asset = self.add_static_asset(
+                    Path(argument_text), upload=True)
                 self.pending.append(PendingFigure(doc, static_asset))
             except OSError as err:
                 self.diagnostics.append(
-                    CannotOpenFile(argument_text, err.strerror, util.get_line(node))
+                    CannotOpenFile(argument_text, err.strerror,
+                                   util.get_line(node))
                 )
 
         elif name == "list-table":
@@ -493,18 +508,22 @@ class JSONVisitor:
 
             try:
                 static_asset = self.add_static_asset(asset_path, False)
-                self.pending.append(PendingLiteralInclude(code, static_asset, options))
+                self.pending.append(PendingLiteralInclude(
+                    code, static_asset, options))
             except OSError as err:
                 self.diagnostics.append(
-                    CannotOpenFile(argument_text, err.strerror, util.get_line(node))
+                    CannotOpenFile(argument_text, err.strerror,
+                                   util.get_line(node))
                 )
             except ValueError as err:
                 msg = f'Invalid "literalinclude": {err}'
-                self.diagnostics.append(InvalidLiteralInclude(msg, util.get_line(node)))
+                self.diagnostics.append(
+                    InvalidLiteralInclude(msg, util.get_line(node)))
             return code
         elif name == "include":
             if argument_text is None:
-                self.diagnostics.append(ExpectedPathArg(name, util.get_line(node)))
+                self.diagnostics.append(
+                    ExpectedPathArg(name, util.get_line(node)))
                 return doc
 
             fileid, path = util.reroot_path(
@@ -538,17 +557,20 @@ class JSONVisitor:
             if image_argument is None:
                 self.diagnostics.append(
                     ExpectedImageArg(
-                        f'"{name}" expected an image argument', util.get_line(node)
+                        f'"{name}" expected an image argument', util.get_line(
+                            node)
                     )
                 )
                 return doc
 
             try:
-                static_asset = self.add_static_asset(Path(image_argument), upload=True)
+                static_asset = self.add_static_asset(
+                    Path(image_argument), upload=True)
                 self.pending.append(PendingFigure(doc, static_asset))
             except OSError as err:
                 self.diagnostics.append(
-                    CannotOpenFile(image_argument, err.strerror, util.get_line(node))
+                    CannotOpenFile(image_argument, err.strerror,
+                                   util.get_line(node))
                 )
         elif name in {"pubdate", "updated-date"}:
             if "date" in node:
@@ -559,7 +581,8 @@ class JSONVisitor:
 
             if not image_argument:
                 # Warn writers that an image is suggested, but do not require
-                self.diagnostics.append(ImageSuggested(name, util.get_line(node)))
+                self.diagnostics.append(
+                    ImageSuggested(name, util.get_line(node)))
             else:
                 try:
                     static_asset = self.add_static_asset(
@@ -584,7 +607,8 @@ class JSONVisitor:
         if not resolved_target_path.is_file():
             self.diagnostics.append(
                 CannotOpenFile(
-                    resolved_target_path, os.strerror(errno.ENOENT), util.get_line(node)
+                    resolved_target_path, os.strerror(
+                        errno.ENOENT), util.get_line(node)
                 )
             )
 
@@ -600,7 +624,8 @@ class JSONVisitor:
                 f'expected "{expected_num_columns}" columns, saw "{len(node.children)}"'
             )
             self.diagnostics.append(
-                InvalidTableStructure(msg, util.get_line(node) + len(node.children) - 1)
+                InvalidTableStructure(msg, util.get_line(
+                    node) + len(node.children) - 1)
             )
             return
 
@@ -666,7 +691,8 @@ class EmbeddedRstParser:
         parser = rstparser.Parser(self.project_config, JSONVisitor)
         visitor, _ = parser.parse(self.page.source_path, text)
         top_of_state = visitor.state[-1]
-        children: MutableSequence[n.Node] = top_of_state.children  # type: ignore
+        # type: ignore
+        children: MutableSequence[n.Node] = top_of_state.children
 
         self.diagnostics.extend(visitor.diagnostics)
         self.page.static_assets.update(visitor.static_assets)
@@ -680,7 +706,8 @@ class EmbeddedRstParser:
         parser = rstparser.Parser(self.project_config, InlineJSONVisitor)
         visitor, _ = parser.parse(self.page.source_path, text)
         top_of_state = visitor.state[-1]
-        children: MutableSequence[n.InlineNode] = top_of_state.children  # type: ignore
+        # type: ignore
+        children: MutableSequence[n.InlineNode] = top_of_state.children
 
         self.diagnostics.extend(visitor.diagnostics)
         self.page.static_assets.update(visitor.static_assets)
@@ -738,7 +765,8 @@ class _Project:
 
         if config_diagnostics:
             backend.on_diagnostics(
-                FileId(self.config.config_path.relative_to(root)), config_diagnostics
+                FileId(self.config.config_path.relative_to(
+                    root)), config_diagnostics
             )
 
         self.parser = rstparser.Parser(self.config, JSONVisitor)
@@ -769,7 +797,8 @@ class _Project:
 
             if substitution_diagnostics:
                 backend.on_diagnostics(
-                    self.get_fileid(self.config.config_path), substitution_diagnostics
+                    self.get_fileid(
+                        self.config.config_path), substitution_diagnostics
                 )
 
         self.config.substitution_nodes = substitution_nodes
@@ -795,7 +824,8 @@ class _Project:
 
         if published_branches_diagnostics:
             backend.on_diagnostics(
-                self.get_fileid(self.config.config_path), published_branches_diagnostics
+                self.get_fileid(
+                    self.config.config_path), published_branches_diagnostics
             )
 
     def get_parsed_branches(
@@ -816,7 +846,8 @@ class _Project:
             pass
         except LoadError as err:
             load_error_line: int = getattr(err.bad_data, "_start_line", 0) + 1
-            load_error_node: Diagnostic = UnmarshallingError(str(err), load_error_line)
+            load_error_node: Diagnostic = UnmarshallingError(
+                str(err), load_error_line)
             return None, [load_error_node]
         except yaml.error.MarkedYAMLError as err:
             yaml_error_node: Diagnostic = ErrorParsingYAMLFile(
@@ -853,7 +884,8 @@ class _Project:
         _, ext = os.path.splitext(path)
         pages: List[Page] = []
         if ext in RST_EXTENSIONS:
-            page, page_diagnostics = parse_rst(self.parser, path, optional_text)
+            page, page_diagnostics = parse_rst(
+                self.parser, path, optional_text)
             pages.append(page)
             diagnostics[path] = page_diagnostics
         elif ext == ".yaml" and prefix in self.yaml_mapping:
@@ -869,7 +901,8 @@ class _Project:
             for file_id in needs_rebuild:
                 file_diagnostics: List[Diagnostic] = []
                 try:
-                    giza_node = giza_category.reify_file_id(file_id, diagnostics)
+                    giza_node = giza_category.reify_file_id(
+                        file_id, diagnostics)
                 except KeyError:
                     logging.warn("No file found in registry: %s", file_id)
                     continue
@@ -898,12 +931,14 @@ class _Project:
             raise ValueError("Unknown file type: " + str(path))
 
         for source_path, diagnostic_list in diagnostics.items():
-            self.backend.on_diagnostics(self.get_fileid(source_path), diagnostic_list)
+            self.backend.on_diagnostics(
+                self.get_fileid(source_path), diagnostic_list)
 
         for page in pages:
             self._page_updated(page, diagnostic_list)
             fileid = self.get_fileid(page.fake_full_path())
-            self.backend.on_update(self.prefix, self.build_identifiers, fileid, page)
+            self.backend.on_update(
+                self.prefix, self.build_identifiers, fileid, page)
 
     def delete(self, path: PurePath) -> None:
         file_id = os.path.basename(path)
@@ -919,7 +954,8 @@ class _Project:
             try:
                 paths = util.get_files(self.config.source_path, RST_EXTENSIONS)
                 logger.debug("Processing rst files")
-                results = pool.imap_unordered(partial(parse_rst, self.parser), paths)
+                results = pool.imap_unordered(
+                    partial(parse_rst, self.parser), paths)
                 for page, diagnostics in results:
                     self._page_updated(page, diagnostics)
             finally:
@@ -946,21 +982,24 @@ class _Project:
 
         # Now that all of our YAML files are loaded, generate a page for each one
         for prefix, giza_category in self.yaml_mapping.items():
-            logger.debug("Processing %s YAML: %d nodes", prefix, len(giza_category))
+            logger.debug("Processing %s YAML: %d nodes",
+                         prefix, len(giza_category))
             for file_id, giza_node in giza_category.reify_all_files(
                 all_yaml_diagnostics
             ):
 
                 def create_page(filename: str) -> Tuple[Page, EmbeddedRstParser]:
                     page = Page.create(
-                        giza_node.path, filename, giza_node.text, n.Root((-1,), [], {})
+                        giza_node.path, filename, giza_node.text, n.Root(
+                            (-1,), [], {})
                     )
                     return (
                         page,
                         EmbeddedRstParser(
                             self.config,
                             page,
-                            all_yaml_diagnostics.setdefault(giza_node.path, []),
+                            all_yaml_diagnostics.setdefault(
+                                giza_node.path, []),
                         ),
                     )
 
@@ -972,15 +1011,18 @@ class _Project:
                     )
 
         with util.PerformanceLogger.singleton().start("postprocessing"):
-            post_metadata, post_diagnostics = self.postprocessor.run(self.pages)
+            post_metadata, post_diagnostics = self.postprocessor.run(
+                self.pages)
 
         for fileid, page in self.postprocessor.pages.items():
-            self.backend.on_update(self.prefix, self.build_identifiers, fileid, page)
+            self.backend.on_update(
+                self.prefix, self.build_identifiers, fileid, page)
         for fileid, diagnostics in post_diagnostics.items():
             self.backend.on_diagnostics(fileid, diagnostics)
         self.backend.on_update_metadata(
             self.prefix, self.build_identifiers, post_metadata
         )
+        self.backend.on_build_complete(self.prefix, self.build_identifiers)
 
     def _populate_include_nodes(self, root: n.Parent[n.Node]) -> n.Node:
         """
@@ -1001,12 +1043,14 @@ class _Project:
                     include_filename = include_filename[1:]
 
                     # Get children of include file
-                    include_file_page_ast = self.pages[FileId(include_filename)].ast
+                    include_file_page_ast = self.pages[FileId(
+                        include_filename)].ast
                     assert isinstance(include_file_page_ast, n.Parent)
                     include_node_children = include_file_page_ast.children
 
                     # Resolve includes within include node
-                    replaced_include = list(map(replace_nodes, include_node_children))
+                    replaced_include = list(
+                        map(replace_nodes, include_node_children))
                     node.children = replaced_include
                 # Replace instances of an image's name with its full path. This allows Snooty Preview to render an image by
                 # using the location of the image on the user's local machine
@@ -1053,7 +1097,8 @@ class _Project:
         if fileid in self.pages:
             old_page = self.pages[fileid]
             old_assets = old_page.static_assets
-            removed_assets = old_page.static_assets.difference(page.static_assets)
+            removed_assets = old_page.static_assets.difference(
+                page.static_assets)
 
         new_assets = page.static_assets.difference(old_assets)
         for asset in new_assets:
@@ -1079,7 +1124,8 @@ class _Project:
 
         # Report to our backend
         self.pages[fileid] = page
-        self.backend.on_diagnostics(self.get_fileid(page.source_path), diagnostics)
+        self.backend.on_diagnostics(
+            self.get_fileid(page.source_path), diagnostics)
 
     def on_asset_event(self, ev: watchdog.events.FileSystemEvent) -> None:
         asset_path = self.get_fileid(Path(ev.src_path))
